@@ -20,11 +20,11 @@ class ViewController: UIViewController {
     let addressButton: UIButton = {
         let addressButton = UIButton()
         addressButton.setTitle("Add Adress", for: .normal)
-        addressButton.layer.cornerRadius = 180
-        addressButton.backgroundColor = .red
-        addressButton.titleLabel?.font = UIFont(name: "AvenirNext-DemiBoldItalic", size: 24)
-        let color: UIColor = .black
+        let color: UIColor = .white
         addressButton.setTitleColor(color, for: .normal)
+        addressButton.backgroundColor = .red
+        addressButton.layer.cornerRadius = 15
+        addressButton.titleLabel?.font = UIFont(name: "AvenirNext-DemiBoldItalic", size: 24)
         addressButton.translatesAutoresizingMaskIntoConstraints = false
         return addressButton
     }()
@@ -32,11 +32,11 @@ class ViewController: UIViewController {
     let routeButton: UIButton = {
         let routeButton = UIButton()
         routeButton.setTitle("Route", for: .normal)
-        routeButton.layer.cornerRadius = 180
-        routeButton.backgroundColor = .red
-        routeButton.titleLabel?.font = UIFont(name: "AvenirNext-DemiBoldItalic", size: 24)
-        let color: UIColor = .black
+        let color: UIColor = .white
         routeButton.setTitleColor(color, for: .normal)
+        routeButton.backgroundColor = .red
+        routeButton.layer.cornerRadius = 15
+        routeButton.titleLabel?.font = UIFont(name: "AvenirNext-DemiBoldItalic", size: 24)
         routeButton.translatesAutoresizingMaskIntoConstraints = false
         routeButton.isHidden = true
         return routeButton
@@ -45,36 +45,119 @@ class ViewController: UIViewController {
     let resetButton: UIButton = {
         let resetButton = UIButton()
         resetButton.setTitle("Reset", for: .normal)
-        resetButton.layer.cornerRadius = 180
-        resetButton.backgroundColor = .red
-        resetButton.titleLabel?.font = UIFont(name: "AvenirNext-DemiBoldItalic", size: 24)
-        let color: UIColor = .black
+        let color: UIColor = .white
         resetButton.setTitleColor(color, for: .normal)
+        resetButton.backgroundColor = .red
+        resetButton.layer.cornerRadius = 15
+        resetButton.titleLabel?.font = UIFont(name: "AvenirNext-DemiBoldItalic", size: 24)
         resetButton.translatesAutoresizingMaskIntoConstraints = false
         resetButton.isHidden = true
         return resetButton
     }()
+    
+    var annotationsArray = [MKPointAnnotation]()
 
     override func viewDidLoad() {
         super.viewDidLoad()
+        
+        mapView.delegate = self
         
         setConstraints()
         
         addressButton.addTarget(self, action: #selector(tappedAdressButton), for: .touchUpInside)
         routeButton.addTarget(self, action: #selector(tappedRouteButton), for: .touchUpInside)
-        resetButton.addTarget(self, action: #selector(tappedresetButton), for: .touchUpInside)
+        resetButton.addTarget(self, action: #selector(tappedResetButton), for: .touchUpInside)
     }
     
     @objc func tappedAdressButton() {
-        print("tapped 1")
+        alertAddAddress(title: "Добавить", placeHoler: "Введите адресс") { [self] text in
+            setupPlacemark(adress: text)
+        }
     }
     
     @objc func tappedRouteButton() {
-        print("tapped 2")
+        for index in 0...annotationsArray.count - 2 {
+            createDirectionRequest(startCoordinate: annotationsArray[index].coordinate, destinationCoordinate: annotationsArray[index + 1].coordinate)
+        }
+        
+        mapView.showAnnotations(annotationsArray, animated: true)
     }
     
-    @objc func tappedresetButton() {
-        print("tapped 3")
+    @objc func tappedResetButton() {
+        mapView.removeOverlays(mapView.overlays)
+        mapView.removeAnnotations(mapView.annotations)
+        annotationsArray = [MKPointAnnotation]()
+        routeButton.isHidden = true
+        resetButton.isHidden = true
+    }
+
+    private func setupPlacemark(adress: String) {
+        let geocoder = CLGeocoder()
+        geocoder.geocodeAddressString(adress) { [self] placemarks, error in
+            if let error = error {
+                print(error)
+                alertError(title: "Ошибка", message: "Сервер недоступен. Попробуйте добавить адресс еще раз")
+                return
+            }
+            
+            guard let placemarks = placemarks else { return }
+            let placemark = placemarks.first
+            
+            let annotation = MKPointAnnotation()
+            annotation.title = "\(adress)"
+            guard let placemarkLocation = placemark?.location else { return }
+            annotation.coordinate = placemarkLocation.coordinate
+            
+            self.annotationsArray.append(annotation)
+            
+            if annotationsArray.count > 2 {
+                routeButton.isHidden = false
+                resetButton.isHidden = false
+            }
+            
+            mapView.showAnnotations(annotationsArray, animated: true)
+        }
+    }
+    
+    private func createDirectionRequest(startCoordinate: CLLocationCoordinate2D, destinationCoordinate: CLLocationCoordinate2D) {
+        
+        let startLocation = MKPlacemark(coordinate: startCoordinate)
+        let destinationLocation = MKPlacemark(coordinate: destinationCoordinate)
+        
+        let request = MKDirections.Request()
+        request.source = MKMapItem(placemark: startLocation)
+        request.destination = MKMapItem(placemark: destinationLocation)
+        request.transportType = .walking
+        request.requestsAlternateRoutes = true
+        
+        let direction = MKDirections(request: request)
+        direction.calculate { [self] response, error in
+            if let error = error {
+                print(error)
+                return
+            }
+            
+            guard let response = response else {
+                alertError(title: "Ошибка", message: "Маршрут недоступен")
+                return
+            }
+            
+            var minRoute = response.routes[0]
+            for route in response.routes {
+                
+                minRoute = (route.distance < minRoute.distance) ? route : minRoute
+            }
+            
+            self.mapView.addOverlay(minRoute.polyline)
+        }
+    }
+}
+
+extension ViewController: MKMapViewDelegate {
+    func mapView(_ mapView: MKMapView, rendererFor overlay: MKOverlay) -> MKOverlayRenderer {
+        let render = MKPolylineRenderer(overlay: overlay as! MKPolyline)
+        render.strokeColor = .red
+        return render
     }
 }
 
