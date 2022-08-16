@@ -18,7 +18,7 @@ class ViewController: UIViewController {
     }()
     
     let addressButton: UIButton = {
-        let addressButton = UIButton()
+        let addressButton = UIButton(type: .system)
         addressButton.setTitle("Add Adress", for: .normal)
         let color: UIColor = .white
         addressButton.setTitleColor(color, for: .normal)
@@ -30,7 +30,7 @@ class ViewController: UIViewController {
     }()
     
     let routeButton: UIButton = {
-        let routeButton = UIButton()
+        let routeButton = UIButton(type: .system)
         routeButton.setTitle("Route", for: .normal)
         let color: UIColor = .white
         routeButton.setTitleColor(color, for: .normal)
@@ -43,7 +43,7 @@ class ViewController: UIViewController {
     }()
     
     let resetButton: UIButton = {
-        let resetButton = UIButton()
+        let resetButton = UIButton(type: .system)
         resetButton.setTitle("Reset", for: .normal)
         let color: UIColor = .white
         resetButton.setTitleColor(color, for: .normal)
